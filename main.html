@@ -1,0 +1,180 @@
+<!-- 视频背景 -->
+<div class="video-container">
+  <video id="bg-video" autoplay muted loop playsinline>
+    <source type="video/mp4" />
+  </video>
+</div>
+<!-- SVG -->
+<svg style="display: none">
+  <filter id="liquid-glass-filter" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+    <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence">
+    </feTurbulence>
+    <feComponentTransfer in="turbulence" result="mapped">
+      <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5"></feFuncR>
+      <feFuncG type="gamma" amplitude="0" exponent="1" offset="0"></feFuncG>
+      <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5"></feFuncB>
+    </feComponentTransfer>
+    <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap"></feGaussianBlur>
+    <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lighting-color="white"
+      result="specLight">
+      <fePointLight x="-200" y="-200" z="300"></fePointLight>
+    </feSpecularLighting>
+    <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage"></feComposite>
+    <feDisplacementMap in="SourceGraphic" in2="softMap" scale="150" xChannelSelector="R" yChannelSelector="G">
+    </feDisplacementMap>
+  </filter>
+</svg>
+<!-- 渲染HTML + 动态视频 -->
+<script type="text/javascript">
+  // 配置对象
+  const config = {
+    video: {
+      mobileSource: 'https://pan.wiiuii.cn/d/DATA/BLOG/video/small.mp4',
+      desktopSource: 'https://pan.wiiuii.cn/d/DATA/BLOG/video/large.mp4',
+      elementId: 'bg-video'
+    },
+    footer: {
+      selector: '.footer',
+      maxAttempts: 10,
+      retryInterval: 300,
+      blog: 'https://www.biibii.cn/',
+    }
+  };
+
+  // 设备类型枚举
+  const DeviceType = {
+    MOBILE: 'mobile',
+    DESKTOP: 'desktop'
+  };
+
+  // 防抖函数优化性能
+  const debounce = (func, wait = 250) => {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        func.apply(this, args);
+      }, wait);
+    };
+  };
+
+  // 视频管理类
+  class BackgroundVideoManager {
+    constructor() {
+      this.videoElement = document.getElementById(config.video.elementId);
+      this.sourceElement = this.videoElement?.querySelector('source');
+      this.lastSource = '';
+      this.lastDeviceType = null;
+    }
+
+    init() {
+      if (!this.videoElement || !this.sourceElement) return;
+
+      this.switchVideoSource();
+
+      // 窗口大小变化时防抖处理
+      const debouncedResizeHandler = debounce(() => this.switchVideoSource());
+      window.addEventListener('resize', debouncedResizeHandler);
+
+      // 页面可见性变化处理
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.playVideo().catch(e => console.log('恢复播放失败:', e));
+        }
+      });
+    }
+
+    getDeviceType() {
+      return (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches) ?
+        DeviceType.MOBILE : DeviceType.DESKTOP;
+    }
+
+    switchVideoSource() {
+      const deviceType = this.getDeviceType();
+
+      if (deviceType === this.lastDeviceType) return;
+      this.lastDeviceType = deviceType;
+
+      const newSource = deviceType === DeviceType.MOBILE
+        ? config.video.mobileSource
+        : config.video.desktopSource;
+
+      if (newSource !== this.lastSource) {
+        this.sourceElement.src = newSource;
+        this.lastSource = newSource;
+
+        this.loadVideo();
+        this.playVideo().catch(error => {
+          console.log('视频自动播放被阻止:', error);
+        });
+      }
+    }
+
+    loadVideo() {
+      this.videoElement.load();
+    }
+
+    playVideo() {
+      return this.videoElement.play();
+    }
+  }
+
+  // 页脚管理类
+  class FooterManager {
+    constructor() {
+      this.currentYear = new Date().getFullYear();
+      this.attemptCount = 0;
+    }
+
+    init() {
+      if (this.renderFooter()) return;
+
+      const interval = setInterval(() => {
+        if (this.attemptCount++ >= config.footer.maxAttempts) {
+          clearInterval(interval);
+          console.warn("Footer element not found after maximum attempts");
+          return;
+        }
+
+        if (this.renderFooter()) {
+          clearInterval(interval);
+        }
+      }, config.footer.retryInterval);
+    }
+
+    renderFooter() {
+      const footerElement = document.querySelector(config.footer.selector);
+      if (!footerElement) return false;
+
+      footerElement.innerHTML = this.getFooterHtml();
+      footerElement.style.opacity = "1";
+      return true;
+    }
+
+    getFooterHtml() {
+      return `
+      <div class="copyright">
+        <div class="copyright-links">
+          <a href="${config.footer.blog}" target="_blank">博客</a>&nbsp;|&nbsp;<a href="/@login">登录</a>&nbsp;|&nbsp;<a href="/@manage">管理</a>
+        </div>
+        <div class="copyright-desc">
+          <p>免责声明：本站为个人网盘，网盘所发布的一切影视、源代码、注册信息及软件等资源仅限用于学习和研究目的</p>
+          <p>Copyright ©2024 - ${this.currentYear} All rights Reserved.&nbsp;由OpenList驱动</p>
+        </div>
+      </div>
+    `;
+    }
+  }
+
+  // 初始化函数
+  const init = () => {
+    const videoManager = new BackgroundVideoManager();
+    videoManager.init();
+
+    const footerManager = new FooterManager();
+    footerManager.init();
+  };
+
+  // 在DOM加载完成后初始化
+  document.addEventListener("DOMContentLoaded", init);   
+</script>
