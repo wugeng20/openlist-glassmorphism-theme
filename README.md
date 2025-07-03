@@ -21,7 +21,7 @@
 
 **自定义头部：**
 
-进入「设置」→「外观」→「自定义头部」
+进入「设置」→「全局」→「自定义头部」
 
 ```html
 <style type="text/css">
@@ -37,7 +37,7 @@ body {
 
 **自定义内容：**
 
-进入「设置」→「外观」→「自定义内容」
+进入「设置」→「全局」→「自定义内容」
 
 ```html
 <!-- 视频背景 -->
@@ -85,7 +85,6 @@ const DeviceType={MOBILE:'mobile',DESKTOP:'desktop'};const debounce=(func,wait=2
 - 移动设备（小屏）：
 
   ![移动设备效果](./preview_mobile.png)
-
 - 桌面设备（大屏）：
 
   ![桌面设备效果](./preview_desktop.png)
