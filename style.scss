@@ -1,3 +1,11 @@
+/* 电脑背景 */
+body {
+  /* 手机端背景图 */
+  --mobile-background-image: url(https://pan.wiiuii.cn/p/DATA/BLOG/images/%E5%93%88%E5%A6%AE%E5%85%8B%E5%AD%9C05.jpg);
+  /* 电脑端背景图 */
+  --desktop-background-image: url(https://pan.wiiuii.cn/p/DATA/BLOG/images/%E5%93%88%E5%A6%AE%E5%85%8B%E5%AD%9C10.jpg);
+}
+
 .hope-ui-dark {
   .markdown-body a {
     color: var(--hope-colors-loContrast) !important;
@@ -9,14 +17,6 @@ html {
     background-color: var(--hope-colors-accent8);
     color: var(--hope-colors-loContrast);
   }
-}
-
-/* 电脑背景 */
-body {
-  /* 手机端背景图 */
-  --mobile-background-image: url(https://pan.wiiuii.cn/p/DATA/BLOG/images/%E5%93%88%E5%A6%AE%E5%85%8B%E5%AD%9C05.jpg);
-  /* 电脑端背景图 */
-  --desktop-background-image: url(https://pan.wiiuii.cn/p/DATA/BLOG/images/%E5%93%88%E5%A6%AE%E5%85%8B%E5%AD%9C10.jpg);
 }
 
 body {
@@ -119,7 +119,8 @@ body {
 .hope-c-PJLV-iZZmce-css,
 // 登录页面
 .hope-c-PJLV-ibcBsNO-css .hope-c-PJLV-iubUra-css,
-.hope-c-PJLV-ibcBsNO-css .hope-c-PJLV-ifjOQLV-css {
+.hope-c-PJLV-ibcBsNO-css .hope-c-PJLV-ifjOQLV-css,
+.hope-c-cIFneQ {
   background-color: transparent !important;
   box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.5), inset -1px -1px 0px 0px rgba(255, 255, 255, 0.6) !important;
   cursor: grab;

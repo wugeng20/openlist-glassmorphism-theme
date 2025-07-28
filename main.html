@@ -26,95 +26,123 @@
 </svg>
 <!-- JS -->
 <script type="text/javascript">
-  // 配置项
+  /**
+   * 全局配置项
+   * @type {{video: VideoConfig, footer: FooterConfig}}
+   */
   const config = Object.freeze({
     video: Object.freeze({
-      mobileSource: 'https://pan.wiiuii.cn/d/DATA/BLOG/video/small.mp4', // 手机视频配置
-      desktopSource: 'https://pan.wiiuii.cn/d/DATA/BLOG/video/large.mp4', // PC视频配置
-      elementId: 'bg-video', // 提取视频元素ID
-      breakpoint: 768 // 添加断点配置
+      mobileSource: 'https://pan.wiiuii.cn/d/DATA/BLOG/video/small.mp4', // 手机端视频源地址
+      desktopSource: 'https://pan.wiiuii.cn/d/DATA/BLOG/video/large.mp4', // 桌面端视频源地址
+      elementId: 'bg-video', // 视频元素ID
+      breakpoint: 768 // 响应式断点
     }),
     footer: Object.freeze({
-      selector: '.footer',
-      maxAttempts: 10,
-      retryInterval: 300,
-      blog: 'https://www.biiibii.cn/', // 博客地址
-      loginUrl: '/@login', // 登录地址
-      manageUrl: '/@manage'  // 管理地址
+      selector: '.footer', // 页脚选择器
+      maxAttempts: 10, // 最大重试次数（默认10次）
+      retryInterval: 1000, // 重试间隔（默认1000ms）
+      blog: 'https://www.biiibii.cn/' // 博客地址，不填则不显示
     })
   });
 
-  // 设备类型枚举
+  /**
+   * 设备类型枚举
+   * @readonly
+   * @enum {string}
+   */
   const DeviceType = Object.freeze({
     MOBILE: 'mobile',
     DESKTOP: 'desktop'
   });
 
-  // 文件扩展名正则，主要用来停止视频播放
+  /**
+   * 文件扩展名正则，用于检测URL是否为文件资源
+   * @type {RegExp}
+   */
   const FILE_EXTENSION_REGEX = /\/[^/]+\.[a-zA-Z0-9]{1,10}(?:$|\/)/;
 
-  // 检测URL路径中是否包含有效后缀名
+  /**
+   * 检查URL路径中是否包含有效文件扩展名
+   * @param {string} url
+   * @returns {boolean}
+   */
   function hasFileExtension(url) {
     try {
       return FILE_EXTENSION_REGEX.test(new URL(url).pathname);
     } catch (error) {
-      console.error('URL解析错误:', error);
+      console.error('[URL] URL解析错误:', error);
       return false;
     }
   }
 
-  // 防抖函数优化
-  const debounce = (func, wait = 250) => {
+  /**
+   * 防抖函数，避免高频调用
+   * @param {Function} func
+   * @param {number} [wait=250] 等待时间（毫秒）
+   * @returns {Function}
+   */
+  function debounce(func, wait = 250) {
     let timeout;
-    return (...args) => {
+    return function (...args) {
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(this, args), wait);
     };
-  };
+  }
 
-  // 视频管理类
+  /**
+   * 背景视频管理器
+   */
   class BackgroundVideoManager {
     constructor() {
+      /** @type {HTMLVideoElement|null} */
       this.videoElement = document.getElementById(config.video.elementId);
+      /** @type {HTMLSourceElement|null} */
       this.sourceElement = this.videoElement?.querySelector('source');
       this.lastSource = '';
       this.lastDeviceType = null;
 
-      // 确保视频元素存在
       if (!this.videoElement || !this.sourceElement) {
-        console.warn('视频元素未找到，视频功能将禁用');
+        console.warn('[VideoManager] 视频元素未找到，视频功能将禁用');
         return;
       }
-
-      // 预加载事件监听
       this.videoElement.addEventListener('loadeddata', this.handleVideoLoad.bind(this));
     }
 
+    /**
+     * 初始化视频管理器
+     */
     init() {
       if (!this.videoElement) return;
-
       this.switchVideoSource();
-
-      // 优化的事件监听
       const resizeHandler = debounce(() => this.switchVideoSource());
       window.addEventListener('resize', resizeHandler);
       document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
     }
 
+    /**
+     * 视频加载后自动播放（如适用）
+     * @private
+     */
     handleVideoLoad() {
-      // 仅在无文件后缀时尝试播放
       if (!hasFileExtension(window.location.href)) {
-        this.playVideo().catch(e => console.debug('视频自动播放失败:', e));
+        this.playVideo().catch(e => console.debug('[VideoManager] 视频自动播放失败:', e));
       }
     }
 
+    /**
+     * 页面可见性变化时自动播放
+     * @private
+     */
     handleVisibilityChange() {
-      if (document.visibilityState === 'visible' &&
-        !hasFileExtension(window.location.href)) {
-        this.playVideo().catch(e => console.debug('可见性恢复播放失败:', e));
+      if (document.visibilityState === 'visible' && !hasFileExtension(window.location.href)) {
+        this.playVideo().catch(e => console.debug('[VideoManager] 可见性恢复播放失败:', e));
       }
     }
 
+    /**
+     * 获取当前设备类型
+     * @returns {string}
+     */
     getDeviceType() {
       return window.innerWidth < config.video.breakpoint ||
         window.matchMedia('(pointer: coarse)').matches
@@ -122,63 +150,135 @@
         : DeviceType.DESKTOP;
     }
 
+    /**
+     * 根据设备类型切换视频源
+     */
     switchVideoSource() {
       const deviceType = this.getDeviceType();
       if (deviceType === this.lastDeviceType) return;
-
       this.lastDeviceType = deviceType;
       const newSource = deviceType === DeviceType.MOBILE
         ? config.video.mobileSource
         : config.video.desktopSource;
-
       if (newSource !== this.lastSource) {
         this.sourceElement.src = newSource;
         this.lastSource = newSource;
-        this.videoElement.load(); // 触发重新加载
+        this.videoElement.load();
       }
     }
 
+    /**
+     * 播放视频
+     * @returns {Promise<void>}
+     */
     playVideo() {
       return this.videoElement.play().catch(e => {
-        console.warn('视频播放被阻止:', e);
+        console.warn('[VideoManager] 视频播放被阻止:', e);
       });
     }
 
+    /**
+     * 暂停视频
+     */
     pauseVideo() {
       this.videoElement.pause();
     }
   }
 
-  // 页脚管理类
+  /**
+   * 页脚管理器
+   */
   class FooterManager {
     constructor() {
       this.currentYear = new Date().getFullYear();
       this.attemptCount = 0;
       this.intervalId = null;
+      this.extractedLinks = null;
     }
 
+    /**
+ * 初始化页脚渲染
+ */
     init() {
       if (this.tryRenderFooter()) return;
 
       this.intervalId = setInterval(() => {
         if (this.attemptCount++ >= config.footer.maxAttempts) {
           this.cleanup();
-          console.warn("页脚元素未找到，停止尝试");
+          console.warn(`[FooterManager] 页脚元素未找到，已尝试 ${config.footer.maxAttempts} 次，停止尝试`);
           return;
         }
-        if (this.tryRenderFooter()) this.cleanup();
+        if (this.tryRenderFooter()) {
+          this.cleanup();
+        }
       }, config.footer.retryInterval);
     }
 
+    /**
+ * 尝试渲染页脚
+ * @returns {boolean}
+ */
     tryRenderFooter() {
       const footerElement = document.querySelector(config.footer.selector);
       if (!footerElement) return false;
 
+      // 从现有footer提取链接
+      if (!this.extractedLinks) {
+        this.extractedLinks = this.extractLinksFromFooter(footerElement);
+      }
+
       footerElement.innerHTML = this.getFooterHtml();
-      footerElement.style.opacity = "1";
+      footerElement.style.opacity = '1';
       return true;
     }
 
+    /**
+ * 从现有footer元素中提取登录和管理链接，并检测登录状态
+ * @param {Element} footerElement
+ * @returns {{loginUrl: string, manageUrl: string, isLoggedIn: boolean}|null}
+ */
+    extractLinksFromFooter(footerElement) {
+      try {
+        const links = footerElement.querySelectorAll('a[href]');
+        let loginUrl = '';
+        let manageUrl = '';
+        let isLoggedIn = false;
+
+        links.forEach(link => {
+          const href = link.getAttribute('href');
+          const text = link.textContent.trim().toLowerCase();
+
+          if (text.includes('登录') || href?.includes('login')) {
+            loginUrl = href;
+          } else if (text.includes('管理') || href?.includes('manage')) {
+            manageUrl = href;
+          }
+        });
+
+        // 根据链接类型判断登录状态
+        // 有管理链接 = 已登录，有登录链接 = 未登录
+        if (manageUrl) {
+          isLoggedIn = true;
+        } else if (loginUrl) {
+          isLoggedIn = false;
+        }
+
+        // 确保至少有一个链接被提取到
+        if (!loginUrl && !manageUrl) {
+          console.warn('[FooterManager] 未从现有footer中提取到登录或管理链接');
+          return null;
+        }
+
+        return { loginUrl, manageUrl, isLoggedIn };
+      } catch (error) {
+        console.warn('[FooterManager] 提取footer链接失败:', error);
+        return null;
+      }
+    }
+
+    /**
+     * 清理定时器
+     */
     cleanup() {
       if (this.intervalId) {
         clearInterval(this.intervalId);
@@ -186,14 +286,40 @@
       }
     }
 
+    /**
+ * 获取页脚HTML内容
+ * @returns {string}
+ */
     getFooterHtml() {
+      const links = this.extractedLinks || {
+        loginUrl: '',
+        manageUrl: '',
+        isLoggedIn: false
+      };
+
+      // 构建链接数组
+      const linkElements = [];
+
+      // 添加博客链接（如果配置了博客地址）
+      if (config.footer.blog && config.footer.blog.trim()) {
+        linkElements.push(`<a href="${config.footer.blog}" target="_blank">博客</a>`);
+      }
+
+      // 根据登录状态决定显示哪个链接
+      if (links.isLoggedIn && links.manageUrl) {
+        linkElements.push(`<a href="${links.manageUrl}">管理</a>`);
+      } else if (!links.isLoggedIn && links.loginUrl) {
+        linkElements.push(`<a href="${links.loginUrl}">登录</a>`);
+      }
+
+      // 构建链接HTML
+      const linksHtml = linkElements.length > 0
+        ? linkElements.join(' | ')
+        : '';
+
       return `
         <div class="copyright">
-          <div class="copyright-links">
-            <a href="${config.footer.blog}" target="_blank">博客</a> | 
-            <a href="${config.footer.loginUrl}">登录</a> | 
-            <a href="${config.footer.manageUrl}">管理</a>
-          </div>
+          ${linksHtml ? `<div class="copyright-links">${linksHtml}</div>` : ''}
           <div class="copyright-desc">
             <p>免责声明：本站为个人网盘，网盘所发布的一切影视、源代码、注册信息及软件等资源仅限用于学习和研究目的</p>
             <p>Copyright ©2024 - ${this.currentYear} All rights Reserved. | 由OpenList驱动</p>
@@ -203,36 +329,31 @@
     }
   }
 
-  // URL变化处理器
+  /**
+   * 创建URL变化处理器，切换视频播放状态
+   * @param {BackgroundVideoManager} videoManager
+   * @returns {Function}
+   */
   function createUrlChangeHandler(videoManager) {
     const handler = () => {
       const hasExtension = hasFileExtension(window.location.href);
       document.body.classList.toggle('has-file-extension', hasExtension);
-
       if (!videoManager || !videoManager.videoElement) return;
-
       hasExtension ? videoManager.pauseVideo() : videoManager.playVideo();
     };
-
-    // 防抖处理避免频繁调用
     return debounce(handler, 100);
   }
 
-  // 初始化函数
-  const init = () => {
+  /**
+   * 初始化入口
+   */
+  function init() {
     const videoManager = new BackgroundVideoManager();
     videoManager.init();
-
     const footerManager = new FooterManager();
     footerManager.init();
-
-    // 创建防抖的URL变化处理器
     const urlChangeHandler = createUrlChangeHandler(videoManager);
-
-    // 初始检查
     urlChangeHandler();
-
-    // 监听URL变化事件
     const urlEvents = ['hashchange', 'popstate', 'pushState', 'replaceState'];
     urlEvents.forEach(event => {
       if (event === 'pushState' || event === 'replaceState') {
@@ -246,7 +367,7 @@
         window.addEventListener(event, urlChangeHandler);
       }
     });
-  };
+  }
 
   // DOM加载完成后初始化
   if (document.readyState !== 'loading') {
